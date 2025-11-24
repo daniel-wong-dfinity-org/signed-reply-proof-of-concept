@@ -21,7 +21,7 @@ Then, you will get a `CertificateOutdated`. This reflects the fact that canister
 method replies EXPIRE. This means that if you want to save a signed canister
 method reply to a file, so it can be read later, you need to increase the expiry
 of ic_agent::Agent to "infinity" in order to get successful verification (modulo
-expiry) of the sign canister method reply that you saved to the file.
+expiry) of the signed canister method reply that you saved to the file.
 
 # References
 
