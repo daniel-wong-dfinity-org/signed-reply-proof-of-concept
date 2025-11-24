@@ -1,6 +1,6 @@
 use ic_agent::{Agent, export::Principal};
 use ic_certification::{Certificate, HashTree, LookupResult, SubtreeLookupResult};
-use std::{collections::HashSet, fs};
+use std::{collections::HashSet, fs, time::Duration};
 
 #[tokio::main]
 async fn main() {
@@ -42,8 +42,11 @@ async fn download_signed_proposal() -> Certificate {
 }
 
 fn verify_signed_proposal(certificate: Certificate) -> (String,) {
+    let a_very_long_time = Duration::from_secs(365_250_000 * 24 * 60 * 60);
+
     let agent = Agent::builder()
         .with_url("https://ic0.app")
+        .with_ingress_expiry(a_very_long_time)
         .build()
         .unwrap();
 
