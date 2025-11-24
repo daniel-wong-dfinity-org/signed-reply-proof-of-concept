@@ -5,6 +5,7 @@ edition = "2024"
 [dependencies]
 base64 = "0.22"
 candid = "0.8"
+clap = { version = "4.5", features = ["derive"] }
 ic-agent = "0.44"
 ic-certification = "3.0"
 serde_cbor = "0.11"

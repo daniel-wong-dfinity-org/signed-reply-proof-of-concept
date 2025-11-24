@@ -1,25 +1,96 @@
+use clap::Parser;
 use ic_agent::{Agent, export::Principal};
 use ic_certification::{Certificate, HashTree, LookupResult, SubtreeLookupResult};
-use std::{collections::HashSet, fs, time::Duration};
+use std::{collections::HashSet, fs, io::Write, time::Duration};
+
+#[derive(clap::Parser)]
+struct Args {
+    #[command(subcommand)]
+    subcommand: Subcommand,
+}
+
+impl Args {
+    async fn execute(self) {
+        self.subcommand.execute().await;
+    }
+}
+
+#[derive(clap::Subcommand)]
+enum Subcommand {
+    Download(Download),
+    LoadFromFile(LoadFromFile),
+}
+
+impl Subcommand {
+    async fn execute(self) {
+        match self {
+            Self::Download(ok)     => ok.execute().await,
+            Self::LoadFromFile(ok) => ok.execute(),
+        };
+    }
+}
+
+#[derive(clap::Parser)]
+struct Download {
+    #[arg(long)]
+    callee: Principal,
+
+    #[arg(long)]
+    method: String,
+
+    #[arg(long)]
+    arg_path: String,
+}
+
+impl Download {
+    async fn execute(&self) {
+        let Self {
+            callee,
+            method,
+            arg_path,
+        } = self;
+
+        /*
+        let arg = if arg_path == "-" {
+        } else {
+            fs::read(arg_path).unwrap();
+        };
+        */
+
+        let signed_proposal = download_signed_proposal(/* callee, method, arg*/).await;
+        let signed_proposal = serde_cbor::to_vec(&signed_proposal).unwrap();
+
+        let stdout = std::io::stdout();
+        let mut handle = stdout.lock();
+        handle.write_all(&signed_proposal).unwrap();
+        handle.flush().unwrap();
+
+        eprintln!("👍 Done outputing the certificate from read_state to stdout.");
+    }
+}
+
+#[derive(clap::Parser)]
+struct LoadFromFile {
+    #[arg(long)]
+    signed_reply_path: String,
+}
+
+impl LoadFromFile {
+    fn execute(&self) {
+        let Self {
+            signed_reply_path,
+        } = self;
+
+        let content = fs::read(&signed_reply_path).unwrap();
+        let certificate = serde_cbor::from_slice::<Certificate>(&content).unwrap();
+        let reply = verify_signed_proposal(certificate);
+        println!("{reply:?}");
+    }
+}
 
 #[tokio::main]
 async fn main() {
-    println!("⏳ Downloading reply...");
-    let signed_proposal = download_signed_proposal().await;
-    let signed_proposal = serde_cbor::to_vec(&signed_proposal).unwrap();
-    fs::write("signed_proposal.cbor", &signed_proposal).unwrap();
-    drop(signed_proposal);
-    println!("👍 Successfully downloaded reply to signed_proposal.cbor.");
-    println!();
-
-    // 👆 Download and store.
-    // 👇 Offline: load, verify, and unpack.
-
-    println!("Loading reply from signed_proposal.cbor.");
-    let signed_proposal = fs::read("signed_proposal.cbor").unwrap();
-    let signed_proposal = serde_cbor::from_slice::<Certificate>(&signed_proposal).unwrap();
-    let reply = verify_signed_proposal(signed_proposal);
-    println!("{reply:?}");
+    Args::parse().execute().await;
 }
 
 async fn download_signed_proposal() -> Certificate {
