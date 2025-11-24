@@ -1,4 +1,4 @@
-The important steps is that this shows are
+The important steps that this shows are
 
 1. Online phase:
     1. Calling a canister method.
