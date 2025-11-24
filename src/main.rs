@@ -13,7 +13,7 @@ async fn main() {
     println!();
 
     // 👆 Download and store.
-    // 👇 Offline: load, )verify, and unpack.
+    // 👇 Offline: load, verify, and unpack.
 
     println!("Loading reply from signed_proposal.cbor.");
     let signed_proposal = fs::read("signed_proposal.cbor").unwrap();
