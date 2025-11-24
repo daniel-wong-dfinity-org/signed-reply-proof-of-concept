@@ -1,0 +1,10 @@
+[package]
+name = "save-signed-canister-response"
+edition = "2024"
+
+[dependencies]
+candid = "0.8"
+ic-agent = "0.44"
+ic-certification = "3.0"
+serde_cbor = "0.11"
+tokio = { version = "1.48", features = ["full"] }
