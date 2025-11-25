@@ -2,16 +2,24 @@
 
 set -eou pipefail
 
-didc encode '(139499 : nat64)' \
+PROPOSAL_ID=139499
+# This gets left behind, in case you want to inspect it yourself.
+SIGNED_REPLY_PATH=signed_reply.cbor
+
+# Save to $SIGNED_REPLY_PATH.
+didc encode "(${PROPOSAL_ID} : nat64)" \
     | xxd -r -p \
     | cargo run -- \
             call-canister \
             --callee=rrkah-fqaaa-aaaaa-aaaaq-cai \
             --method=get_proposal_info \
             --arg-path=- \
-    | cargo run -- \
-            load-from-file \
-            --signed-reply-path=- \
+            > "${SIGNED_REPLY_PATH}"
+
+# At some later time, load from $SIGNED_REPLY_PATH
+cargo run -- \
+      load-from-file \
+      --signed-reply-path="${SIGNED_REPLY_PATH}" \
     | didc decode \
            --defs ../ic/rs/nns/governance/canister/governance.did \
            --types '(opt ProposalInfo)' \
