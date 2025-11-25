@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+set -eou pipefail
+
+didc encode '(139499 : nat64)' \
+    | xxd -r -p \
+    | cargo run -- \
+            call-canister \
+            --callee=rrkah-fqaaa-aaaaa-aaaaq-cai \
+            --method=get_proposal_info \
+            --arg-path=- \
+    | cargo run -- \
+            load-from-file \
+            --signed-reply-path=- \
+    | didc decode \
+           --defs ../ic/rs/nns/governance/canister/governance.did \
+           --types '(opt ProposalInfo)' \
+    | idl2json \
+    | jq '.[0] | {
+        action: (.proposal[0].action[0] | keys | .[0]),
+        latest_tally
+    }'
