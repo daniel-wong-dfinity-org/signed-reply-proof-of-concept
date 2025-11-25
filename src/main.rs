@@ -9,13 +9,25 @@ use std::{
     time::Duration,
 };
 
+/// Supports calling a canister, printing out the signed reply, loading a signed
+/// reply from a file, and printing just the reply content itself.
+///
+/// A signed reply is a CBOR-encoded ICP certificate. For a detailed explanation
+/// of what "certificate" means in this context and how it wraps a reply, see
+/// the following sections of the ICP interface specification:
+///
+/// * certificate:
+///   https://internetcomputer.org/docs/references/ic-interface-spec#certification
+///
+/// * calling a canister (from outisde the ICP via HTTPS):
+///   https://internetcomputer.org/docs/references/ic-interface-spec#http-call-overview
 #[derive(clap::Parser)]
-struct Args {
+struct Argv {
     #[command(subcommand)]
     subcommand: Subcommand,
 }
 
-impl Args {
+impl Argv {
     async fn execute(self) {
         self.subcommand.execute().await;
     }
@@ -23,22 +35,26 @@ impl Args {
 
 #[derive(clap::Subcommand)]
 enum Subcommand {
-    DownloadSignedReply(DownloadSignedReply),
-    LoadSignedReplyFromFile(LoadSignedReplyFromFile),
+    CallCanister(CallCanister),
+    LoadFromFile(LoadFromFile),
 }
 
 impl Subcommand {
     async fn execute(self) {
         #[rustfmt::skip] // Keep alignment, because it strongly triggers the human brain.
         match self {
-            Self::DownloadSignedReply     (ok) => ok.execute().await,
-            Self::LoadSignedReplyFromFile (ok) => ok.execute(),
+            Self::CallCanister (ok) => ok.execute().await,
+            Self::LoadFromFile (ok) => ok.execute(),
         };
     }
 }
 
+/// Prints out the signed reply as a CBOR-encoded certificate.
+///
+/// The output of this subcommand can be fed to another subcommand of this tool:
+/// load-from-file
 #[derive(clap::Parser)]
-struct DownloadSignedReply {
+struct CallCanister {
     #[arg(long)]
     callee: Principal,
 
@@ -49,7 +65,7 @@ struct DownloadSignedReply {
     arg_path: String,
 }
 
-impl DownloadSignedReply {
+impl CallCanister {
     async fn execute(self) {
         let Self {
             callee,
@@ -57,13 +73,7 @@ impl DownloadSignedReply {
             arg_path,
         } = self;
 
-        let arg = if arg_path == "-" {
-            let mut arg = vec![];
-            stdin().read_to_end(&mut arg).unwrap();
-            arg
-        } else {
-            fs::read(arg_path).unwrap()
-        };
+        let arg = read_flag_path(&arg_path);
 
         let signed_proposal = download_signed_proposal(callee, &method, arg).await;
         let signed_proposal = serde_cbor::to_vec(&signed_proposal).unwrap();
@@ -77,19 +87,26 @@ impl DownloadSignedReply {
     }
 }
 
+/// Reads signed canister reply from a file, and prints the reply.
+///
+/// The input is a CBOR-encoded ICP certificate. Such data can be produced using
+/// another subcommand of this tool: call-canister.
+///
+/// The output is in hex format, suitable for piping to `didc decode`.
 #[derive(clap::Parser)]
-struct LoadSignedReplyFromFile {
+struct LoadFromFile {
     #[arg(long)]
     signed_reply_path: String,
 }
 
-impl LoadSignedReplyFromFile {
+impl LoadFromFile {
     fn execute(self) {
         let Self { signed_reply_path } = self;
 
-        let content = fs::read(&signed_reply_path).unwrap();
+        let content = read_flag_path(&signed_reply_path);
         let certificate = serde_cbor::from_slice::<Certificate>(&content).unwrap();
         let reply = verify_signed_proposal(certificate);
+
         let reply = reply
             .into_iter()
             .map(|element| format!("{:02X}", element))
@@ -98,9 +115,19 @@ impl LoadSignedReplyFromFile {
     }
 }
 
+fn read_flag_path(path: &str) -> Vec<u8> {
+    if path == "-" {
+        let mut result = vec![];
+        stdin().read_to_end(&mut result).unwrap();
+        return result;
+    }
+
+    fs::read(path).unwrap()
+}
+
 #[tokio::main]
 async fn main() {
-    Args::parse().execute().await;
+    Argv::parse().execute().await;
 }
 
 async fn download_signed_proposal(
@@ -168,8 +195,8 @@ fn verify_signed_proposal(certificate: Certificate) -> Vec<u8> {
     eprintln!();
     eprintln!(
         "👍 Certificate looks good. That is, we seem to have genuine data from\n\
-         the ICP (presumably, a response from the Governance canister, but this\n\
-         part has not been verified YET).",
+         the ICP, presumably, a reply from some canister call, but this part will\n\
+         be verified later.",
     );
     eprintln!();
 

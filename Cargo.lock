@@ -2193,19 +2193,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28d3b2b1366ec20994f1fd18c3c594f05c5dd4bc44d8bb0c1c632c8d6829481f"
 
 [[package]]
-name = "save-signed-canister-response"
-version = "0.0.0"
-dependencies = [
- "base64 0.22.1",
- "candid 0.8.4",
- "clap",
- "ic-agent",
- "ic-certification",
- "serde_cbor",
- "tokio",
-]
-
-[[package]]
 name = "scopeguard"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2364,6 +2351,19 @@ checksum = "77549399552de45a898a580c1b41d445bf730df867cc44e6c0233bbc4b8329de"
 dependencies = [
  "digest 0.10.7",
  "rand_core 0.6.4",
+]
+
+[[package]]
+name = "signed-canister-reply"
+version = "0.0.0"
+dependencies = [
+ "base64 0.22.1",
+ "candid 0.8.4",
+ "clap",
+ "ic-agent",
+ "ic-certification",
+ "serde_cbor",
+ "tokio",
 ]
 
 [[package]]
